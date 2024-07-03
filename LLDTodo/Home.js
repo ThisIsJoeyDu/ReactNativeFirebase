@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { 
+  useState,
+  useEffect
+ } from 'react';
 import {
   SafeAreaView,
   View,
@@ -9,6 +12,8 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { firestore, load, save, update, remove } from './firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 
 const HomePage = () => {
   const [tasks, setTasks] = useState([]);
@@ -17,22 +22,35 @@ const HomePage = () => {
 
   const addTask = () => {
     if (taskTitle.trim()) {
-      setTasks([...tasks, { id: Date.now(), title: taskTitle, status: false }]);
+      save({title: taskTitle, status: false})
+      .then((id) => {
+        fetchData();
+      });
       setTaskTitle('');
       setIsButtonDisabled(true);
-    }
   };
+};
 
   const toggleTaskStatus = (id) => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === id ? { ...task, status: !task.status } : task
-    );
-    setTasks(updatedTasks);
+    const updatedTasks = tasks.filter((task) =>
+      task.id === id
+    )[0];
+    console.log(updatedTasks);
+    // console.log(updatedTasks.status);
+    update(id, {status: !updatedTasks.status})
+    .then(() => {
+      fetchData();
+    })
+    .catch(() => {
+      console.error('Error updating data');
+    });
   };
 
   const deleteTask = (id) => {
-    const updatedTasks = tasks.filter((task) => task.id !== id);
-    setTasks(updatedTasks);
+    remove(id)
+    .then((result) => {
+      fetchData();
+    });
   };
 
   const renderItem = ({ item }) => (
@@ -53,6 +71,19 @@ const HomePage = () => {
   const handleTitleChange = (title) => {
     setTaskTitle(title);
     setIsButtonDisabled(title.trim() === '');
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    load()
+      .then((data) => {
+        setTasks(data);
+      })
+      .catch(() => {
+        console.error('Error fetching data');})
   };
 
   return (
